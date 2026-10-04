@@ -1,0 +1,2 @@
+CREATE DATABASE consumerdb;
+GRANT ALL PRIVILEGES ON DATABASE consumerdb TO wallet;
