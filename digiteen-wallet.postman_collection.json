@@ -1,0 +1,844 @@
+{
+  "info": {
+    "_postman_id": "b6f4f1ef-4ef4-4f4c-a1a8-9d91d5089ecf",
+    "name": "Digiteen Digital Wallet",
+    "description": "Postman collection for the Digiteen wallet assessment project.\n\nRecommended order: Health → User A Register/Login → User B Register/Login → Deposit → Balance → Withdraw/Transfer → Transactions → Consumer Verification.\n\nThe collection automatically stores JWT tokens, wallet IDs, transaction IDs and correlation IDs. Register requests generate a new unique email each time they are run.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "consumerBaseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "userAName",
+      "value": "Ali Wallet",
+      "type": "string"
+    },
+    {
+      "key": "userAEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAPhone",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAPassword",
+      "value": "Password123!",
+      "type": "string"
+    },
+    {
+      "key": "userAToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "walletAId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBName",
+      "value": "Sara Wallet",
+      "type": "string"
+    },
+    {
+      "key": "userBEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBPhone",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBPassword",
+      "value": "Password123!",
+      "type": "string"
+    },
+    {
+      "key": "userBToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "walletBId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correlationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lastTransactionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lastTraceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "duplicateTransferRequestId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "item": [
+        {
+          "name": "Wallet Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Service is UP\", function () { pm.expect(pm.response.json().status).to.eql(\"UP\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consumer Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consumerBaseUrl}}/actuator/health"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Service is UP\", function () { pm.expect(pm.response.json().status).to.eql(\"UP\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Auth - User A",
+      "item": [
+        {
+          "name": "Register User A",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{userAName}}\",\n  \"email\": \"{{userAEmail}}\",\n  \"phone\": \"{{userAPhone}}\",\n  \"password\": \"{{userAPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates a fresh User A. Email and phone are generated automatically before each run."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.collectionVariables.set(\"userAEmail\", `user.a.${now}@example.com`);",
+                  "pm.collectionVariables.set(\"userAPhone\", `09${now.slice(-9)}`);",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletAId\", j.walletId);",
+                  "pm.test(\"Wallet A created\", function () { pm.expect(j.walletId).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User A",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userAEmail}}\",\n  \"password\": \"{{userAPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"userAToken\", j.accessToken);",
+                  "pm.collectionVariables.set(\"walletAId\", j.walletId);",
+                  "pm.test(\"JWT stored\", function () { pm.expect(j.accessToken).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Auth - User B",
+      "item": [
+        {
+          "name": "Register User B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{userBName}}\",\n  \"email\": \"{{userBEmail}}\",\n  \"phone\": \"{{userBPhone}}\",\n  \"password\": \"{{userBPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates the destination user used by transfer requests."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.collectionVariables.set(\"userBEmail\", `user.b.${now}@example.com`);",
+                  "pm.collectionVariables.set(\"userBPhone\", `08${now.slice(-9)}`);",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletBId\", j.walletId);",
+                  "pm.test(\"Wallet B created\", function () { pm.expect(j.walletId).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userBEmail}}\",\n  \"password\": \"{{userBPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"userBToken\", j.accessToken);",
+                  "pm.collectionVariables.set(\"walletBId\", j.walletId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Wallet - User A",
+      "item": [
+        {
+          "name": "Deposit 100000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/deposit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{depositRequestId}}\",\n  \"amount\": 100000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Adds 100,000 units to User A. A new requestId is generated each time.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"depositRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"lastTransactionId\", j.transactionId);",
+                  "pm.collectionVariables.set(\"lastTraceId\", pm.response.headers.get(\"X-Correlation-ID\"));",
+                  "pm.test(\"Type is DEPOSIT\", function () { pm.expect(j.type).to.eql(\"DEPOSIT\"); });",
+                  "pm.test(\"Transaction succeeded\", function () { pm.expect(j.status).to.eql(\"SUCCESS\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/balance",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Balance is non-negative\", function () { pm.expect(Number(j.balance)).to.be.at.least(0); });",
+                  "pm.test(\"Own wallet returned\", function () { pm.expect(j.walletId).to.eql(pm.collectionVariables.get(\"walletAId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Withdraw 3000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/withdraw",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{withdrawRequestId}}\",\n  \"amount\": 3000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"withdrawRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"lastTransactionId\", j.transactionId);",
+                  "pm.collectionVariables.set(\"lastTraceId\", pm.response.headers.get(\"X-Correlation-ID\"));",
+                  "pm.test(\"Type is WITHDRAW\", function () { pm.expect(j.type).to.eql(\"WITHDRAW\"); });",
+                  "pm.test(\"Transaction succeeded\", function () { pm.expect(j.status).to.eql(\"SUCCESS\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transfer 10000 A -> B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/transfer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{transferRequestId}}\",\n  \"destinationWalletId\": \"{{walletBId}}\",\n  \"amount\": 10000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Transfers from User A to User B. Run Register/Login for both users first.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"transferRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"lastTransactionId\", j.transactionId);",
+                  "pm.collectionVariables.set(\"lastTraceId\", pm.response.headers.get(\"X-Correlation-ID\"));",
+                  "pm.test(\"Type is TRANSFER\", function () { pm.expect(j.type).to.eql(\"TRANSFER\"); });",
+                  "pm.test(\"Transaction succeeded\", function () { pm.expect(j.status).to.eql(\"SUCCESS\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/transactions",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Response is an array\", function () { pm.expect(pm.response.json()).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Idempotency Demo",
+      "description": "Send the same request multiple times. The first response should have duplicate=false; replays should return the same transaction with duplicate=true and must not apply the financial effect again.",
+      "item": [
+        {
+          "name": "Duplicate Transfer A -> B (repeat 5x)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/wallet/transfer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{duplicateTransferRequestId}}\",\n  \"destinationWalletId\": \"{{walletBId}}\",\n  \"amount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"duplicateTransferRequestId\")) {",
+                  "  pm.collectionVariables.set(\"duplicateTransferRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "}",
+                  "pm.collectionVariables.set(\"correlationId\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"lastTransactionId\", j.transactionId);",
+                  "pm.collectionVariables.set(\"lastTraceId\", pm.response.headers.get(\"X-Correlation-ID\"));",
+                  "pm.test(\"Transfer succeeded\", function () { pm.expect(j.status).to.eql(\"SUCCESS\"); });",
+                  "console.log(\"duplicate=\", j.duplicate, \"transactionId=\", j.transactionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset Duplicate requestId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health",
+            "description": "Utility request: clears the saved duplicate transfer requestId so the next duplicate-demo request starts a new idempotency sequence."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset(\"duplicateTransferRequestId\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Duplicate requestId reset\", function () { pm.expect(pm.collectionVariables.get(\"duplicateTransferRequestId\")).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Consumer Verification",
+      "item": [
+        {
+          "name": "Processed Event Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consumerBaseUrl}}/api/v1/processed-events/count"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Count by Last Transaction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consumerBaseUrl}}/api/v1/processed-events/transaction/{{lastTransactionId}}/count",
+            "description": "Uses lastTransactionId saved from the most recent deposit/withdraw/transfer. After Kafka processing settles, a successful transaction should normally return 1."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"At most one processed side effect\", function () { pm.expect(Number(pm.response.text())).to.be.at.most(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Events by Last Trace ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consumerBaseUrl}}/api/v1/processed-events/trace/{{lastTraceId}}",
+            "description": "Uses X-Correlation-ID returned by the wallet service and verifies end-to-end trace propagation into the consumer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Response is an array\", function () { pm.expect(pm.response.json()).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

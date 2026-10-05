@@ -1,10 +1,12 @@
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: postgres
     environment:
       POSTGRES_USER: wallet
       POSTGRES_PASSWORD: wallet
       POSTGRES_DB: walletdb
+      TZ: Asia/Tehran
     ports:
       - "5432:5432"
     volumes:
@@ -18,6 +20,7 @@ services:
 
   kafka:
     image: apache/kafka:3.8.1
+    container_name: kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -34,6 +37,7 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      TZ: Asia/Tehran
     ports:
       - "9092:9092"
     healthcheck:
@@ -43,6 +47,7 @@ services:
       retries: 30
 
   wallet-service:
+    container_name: wallet-service
     build:
       context: ./wallet-service
     environment:
@@ -51,6 +56,8 @@ services:
       DB_PASSWORD: wallet
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: c3VwZXItc2VjdXJlLWRldmVsb3BtZW50LWtleS0zMi1ieXRlcyE=
+      JWT_EXPIRATION_MINUTES: 120
+      TZ: Asia/Tehran
     ports:
       - "8080:8080"
     depends_on:
@@ -60,6 +67,7 @@ services:
         condition: service_healthy
 
   wallet-event-consumer:
+    container_name: wallet-event-consumer
     build:
       context: ./wallet-event-consumer
     environment:
@@ -67,6 +75,7 @@ services:
       DB_USER: wallet
       DB_PASSWORD: wallet
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      TZ: Asia/Tehran
     ports:
       - "8081:8081"
     depends_on:
